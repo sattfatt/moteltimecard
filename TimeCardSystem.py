@@ -43,6 +43,12 @@ def end_of_day():
 def fakelog():
     print("fake logging.......Done")
 
+def detect_end_of_day():
+    current_time = datetime.datetime.now()
+    if current_time.time().hour == 19 and current_time.time().minute == 33:
+        global isEndOfDay
+        isEndOfDay = True
+
 
 def time_table():
 
@@ -83,6 +89,14 @@ def time_table():
 if __name__ == "__main__":
 
     while(True):
-        time_table()
+
+        detect_end_of_day()
+
+        if(isEndOfDay):
+            end_of_day()
+            print("End of day reached!")
+            isEndOfDay = False
+        else:
+            time_table()
 
 
