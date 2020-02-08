@@ -10,6 +10,10 @@ import RFID as RFID
 3.) We need to keep track of the date and time for each read. (done)
 4.) each read has to have a gap of 5 min or so between reads (pretty much done)
 5.) at the end of the day the table of times has to be logged to a file with the date
+6.) for the night shift we need to log the times differently (we could shift
+the times back by 12 hours.
+7.) we only log the 6am-2pm and 2pm-10pm shifts when end of day is triggered
+8.) we log the 10pm-6am at 6 (night shift)
 ---------------------------------
 """
 # initialize reader object
@@ -28,6 +32,13 @@ ID = 0
 
 # end of day bool
 isEndOfDay = False
+# end of night shift bool
+isEndOfNight = False
+
+# end of day value
+end_of_day_val = (23,59)
+
+end_of_night_val = (5,59)
 
 time_between_reads = datetime.datetime.now()
 
@@ -45,10 +56,15 @@ def fakelog():
 
 def detect_end_of_day():
     current_time = datetime.datetime.now()
-    if current_time.time().hour == 19 and current_time.time().minute == 33:
+    if current_time.time().hour == end_of_day_val[0] and current_time.time().minute == end_of_day_val[1]:
         global isEndOfDay
         isEndOfDay = True
 
+def detect_end_of_night():
+    current_time = datetime.datetime.now()
+    if current_time.time().hour == end_of_night_val[0] and current_time.time().minute == end_of_night_val[1]:
+        global isEndOfNight
+        isEndOfNight = True
 
 def time_table():
 
@@ -91,6 +107,7 @@ if __name__ == "__main__":
     while(True):
 
         detect_end_of_day()
+        detect_end_of_night()
 
         if(isEndOfDay):
             end_of_day()
