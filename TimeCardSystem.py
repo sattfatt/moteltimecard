@@ -42,10 +42,21 @@ end_of_night_val = (5,59)
 
 time_between_reads = datetime.datetime.now()
 
+max_checks_in_day = 6
+
 def end_of_day():
     """
     at the end of the day make sure to log the dictionary and reset the
-    dictionary.
+    day shift dictionary entries.
+    """
+    fakelog()
+    global time_tables
+    time_tables = {}
+
+def end_of_day():
+    """
+    at the end of the night shift  make sure to log the dictionary and reset the
+    night shift dictionary entries.
     """
     fakelog()
     global time_tables
@@ -80,6 +91,10 @@ def time_table():
         # this should block until something is read.
         ID, name = reader.read_fob()
         name = ''.join(name.split())
+        # here we look at the pin log file and check to see if their input pin
+        # matches the fob ID. This is to ensure no accidental entries. if the
+        # pin is incorrect we should abort logging and saving.
+
         time_between_reads = datetime.datetime.now()
 
         # when we read we should keep note of the time between reads
@@ -99,7 +114,6 @@ def time_table():
                 print(str(t))
             print("------------------------------")
 
-
 # program start
 
 if __name__ == "__main__":
@@ -111,8 +125,12 @@ if __name__ == "__main__":
 
         if(isEndOfDay):
             end_of_day()
-            print("End of day reached!")
+            print("End of day shift reached!")
             isEndOfDay = False
+        if(isEndOfNight):
+            end_of_night()
+            print("End of night shift reached!")
+            isEndOfNight = False
         else:
             time_table()
 
