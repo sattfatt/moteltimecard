@@ -42,19 +42,15 @@ time_between_reads = datetime.datetime.now()
 max_checks_in_day = 6
 
 def end_of_day():
-    """
-    at the end of the day make sure to log the dictionary and reset the
-    day shift dictionary entries.
-    """
+    """at the end of the day make sure to log the dictionary and reset the
+    day shift dictionary entries."""
     fakelog()
     global time_tables
     time_tables = {}
 
 def end_of_day():
-    """
-    at the end of the night shift  make sure to log the dictionary and reset the
-    night shift dictionary entries.
-    """
+    """at the end of the night shift  make sure to log the dictionary and reset the
+    night shift dictionary entries."""
     fakelog()
     global time_tables
     time_tables = {}
@@ -63,18 +59,22 @@ def fakelog():
     print("fake logging.......Done")
 
 def detect_end_of_day():
+    """This function detects the end of the day shift"""
     current_time = datetime.datetime.now()
     if current_time.time().hour == end_of_day_val[0] and current_time.time().minute == end_of_day_val[1]:
         global isEndOfDay
         isEndOfDay = True
 
 def detect_end_of_night():
+    """This function detects the end of the night shift"""
     current_time = datetime.datetime.now()
     if current_time.time().hour == end_of_night_val[0] and current_time.time().minute == end_of_night_val[1]:
         global isEndOfNight
         isEndOfNight = True
 
 def check_pin(ID):
+    """this function asks for the user to enter a pin, if it matches with the
+    pin on file, we return True else we return false"""
     Pin = input("Enter Pin: ")
     f = open("ID.txt", "r")
     txt = f.read()
