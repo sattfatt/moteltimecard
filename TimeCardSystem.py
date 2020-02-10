@@ -27,9 +27,6 @@ time_tables = {}
 # time interval for reading
 time_interval = 1
 
-# initialize id
-ID = 0
-
 # end of day bool
 isEndOfDay = False
 # end of night shift bool
@@ -77,6 +74,19 @@ def detect_end_of_night():
         global isEndOfNight
         isEndOfNight = True
 
+def check_pin(ID):
+    Pin = input("Enter Pin: ")
+    f = open("ID.txt", "r")
+    txt = f.read()
+    f.close()
+    txt = txt.split("\n")
+    for line in txt:
+        data = line.split(":")
+        if ID == data[0] and Pin == data[1]:
+            return True
+    return False
+
+
 def time_table():
 
     """This function listens for an RFID signal, reads it, and adds the ID,
@@ -94,13 +104,19 @@ def time_table():
         # here we look at the pin log file and check to see if their input pin
         # matches the fob ID. This is to ensure no accidental entries. if the
         # pin is incorrect we should abort logging and saving.
+        if check_pin(ID) == False:
+            return
 
         time_between_reads = datetime.datetime.now()
 
         # when we read we should keep note of the time between reads
 
         if (ID, name) in time_tables:
-            time_tables[(ID, name)].append(datetime.datetime.now())
+            if len(time_tables[(ID, name)]) < 6:
+                time_tables[(ID, name)].append(datetime.datetime.now())
+            else:
+                print("max check in/out times reached for " + name + " today!")
+                return
 
         else:
             time_tables[(ID, name)] = []
