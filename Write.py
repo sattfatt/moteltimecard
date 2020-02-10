@@ -12,7 +12,6 @@ try:
     while(True):
         text = input('New Data: ')
         text = ''.join(text.split())
-        global pin1
         pin1 = input('New Pin: ')
         pin2 = input('Enter again: ')
         if(pin1 == pin2):
