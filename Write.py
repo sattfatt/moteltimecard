@@ -25,7 +25,7 @@ try:
     print("Written")
 
     f = open("ID.txt", "a")
-    f.write(ID + ":" + pin1 + "\n")
+    f.write(str(ID) + ":" + pin1 + "\n")
     f.close()
 
 finally:
