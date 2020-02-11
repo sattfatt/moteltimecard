@@ -72,7 +72,7 @@ def detect_end_of_night():
         global isEndOfNight
         isEndOfNight = True
 
-def check_pin(ID):
+def check_pin(ID, name):
     """this function asks for the user to enter a pin, if it matches with the
     pin on file, we return True else we return false"""
     Pin = input("Enter Pin: ")
@@ -82,7 +82,10 @@ def check_pin(ID):
     txt = txt.split("\n")
     for line in txt:
         data = line.split(":")
-        if ID == data[0] and Pin == data[1]:
+       # print (repr(data))
+       # print (repr(ID))
+       # print (repr(Pin))
+        if str(ID) == data[0] and Pin == data[1] and name == data[2]:
             return True
     return False
 
@@ -104,7 +107,7 @@ def time_table():
         # here we look at the pin log file and check to see if their input pin
         # matches the fob ID. This is to ensure no accidental entries. if the
         # pin is incorrect we should abort logging and saving.
-        if check_pin(ID) == False:
+        if check_pin(ID, name) == False:
             print("Pin Does not match ID")
             return
 
@@ -115,6 +118,8 @@ def time_table():
         if (ID, name) in time_tables:
             if len(time_tables[(ID, name)]) < 6:
                 time_tables[(ID, name)].append(datetime.datetime.now())
+                # also log to excel file
+                fakelog()
             else:
                 print("max check in/out times reached for " + name + " today!")
                 return
@@ -122,7 +127,8 @@ def time_table():
         else:
             time_tables[(ID, name)] = []
             time_tables[(ID, name)].append(datetime.datetime.now())
-
+            # also log to excel file
+            fakelog()
         # printing to the console
         print("*************New Table***************")
         for key, val in time_tables:
@@ -148,7 +154,6 @@ if __name__ == "__main__":
             end_of_night()
             print("End of night shift reached!")
             isEndOfNight = False
-        else:
-            time_table()
+        time_table()
 
 
