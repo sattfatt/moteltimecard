@@ -105,6 +105,7 @@ def time_table():
         # matches the fob ID. This is to ensure no accidental entries. if the
         # pin is incorrect we should abort logging and saving.
         if check_pin(ID) == False:
+            print("Pin Does not match ID")
             return
 
         time_between_reads = datetime.datetime.now()
