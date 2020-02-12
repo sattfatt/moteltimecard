@@ -19,11 +19,11 @@ try:
         else:
             print("pins do not match, please try again")
 
-    print("Now place your tag to write")
-    ID, text = reader.read()
+    print("Now place your key next to reader")
+
     reader.write(text)
     print("Written")
-
+    ID, text = reader.read()
     f = open("ID.txt", "a")
     f.write(str(ID) + ":" + pin1 + ":" + text + "\n")
     f.close()

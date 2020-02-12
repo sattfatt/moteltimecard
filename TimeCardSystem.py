@@ -82,10 +82,11 @@ def check_pin(ID, name):
     txt = txt.split("\n")
     for line in txt:
         data = line.split(":")
-       # print (repr(data))
-       # print (repr(ID))
-       # print (repr(Pin))
-        if str(ID) == data[0] and Pin == data[1] and name == data[2]:
+        #print (repr(data))
+        #print (repr(ID))
+        #print (repr(Pin))
+        #print (repr(name))
+        if str(ID) == data[0] and Pin == data[1] and name == ''.join(data[2].split()):
             return True
     return False
 
