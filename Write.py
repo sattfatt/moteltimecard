@@ -8,6 +8,8 @@ reader = SimpleMFRC522()
 
 pin1 = -1
 
+isReplaced = False
+
 try:
     while(True):
         text = input('New Data: ')
@@ -21,12 +23,31 @@ try:
 
     print("Now place your key next to reader")
 
-    reader.write(text)
-    print("Written")
-    ID, text = reader.read()
-    f = open("ID.txt", "a")
-    f.write(str(ID) + ":" + pin1 + ":" + text + "\n")
+    ID, name = reader.read()
+
+    f = open("ID.txt", "r")
+    data = f.read();
     f.close()
+    data = data.split("\n")
+    # check if the ID of the fob already exists in ID.txt and remove it
+    for i, line in enumerate(data):
+        a = line.split(":")
+        if a[0] == str(ID):
+            data.remove(data[i])
+
+    while("" in data):
+        data.remove("")
+
+    data.append(str(ID) + ":" + pin1 + ":" + text)
+
+    f = open("ID.txt", "w")
+    print(repr(data))
+    f.write('\n'.join(data) + '\n')
+    f.close()
+    reader.write(text)
+    print("written")
+
+# todo FIX.
 
 finally:
     GPIO.cleanup()
