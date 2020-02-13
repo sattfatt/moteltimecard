@@ -2,7 +2,7 @@
 # hello chinmay
 import datetime
 import RFID as RFID
-
+import LCD as screen
 """
 -------------NOTES---------------
 1.) By default we should be reading (done)
@@ -17,7 +17,6 @@ the times back by 12 hours.
 ---------------------------------
 """
 # initialize reader object
-
 reader = RFID.RFID()
 
 # initialize the time tables dictionary
@@ -76,6 +75,7 @@ def check_pin(ID, name):
     """this function asks for the user to enter a pin, if it matches with the
     pin on file, we return True else we return false"""
     Pin = input("Enter Pin: ")
+    screen.input_lcd("Pin:")
     f = open("ID.txt", "r")
     txt = f.read()
     f.close()
@@ -89,7 +89,6 @@ def check_pin(ID, name):
         if str(ID) == data[0] and Pin == data[1] and name == ''.join(data[2].split()):
             return True
     return False
-
 
 def time_table():
 
@@ -156,5 +155,3 @@ if __name__ == "__main__":
             print("End of night shift reached!")
             isEndOfNight = False
         time_table()
-
-
