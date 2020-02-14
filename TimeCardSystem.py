@@ -3,6 +3,7 @@
 import datetime
 import RFID as RFID
 import LCD as screen
+import time
 """
 -------------NOTES---------------
 1.) By default we should be reading (done)
@@ -40,12 +41,7 @@ time_between_reads = datetime.datetime.now()
 
 max_checks_in_day = 6
 
-def end_of_day():
-    """at the end of the day make sure to log the dictionary and reset the
-    day shift dictionary entries."""
-    fakelog()
-    global time_tables
-    time_tables = {}
+time_tables = {}
 
 def end_of_day():
     """at the end of the night shift  make sure to log the dictionary and reset the
@@ -74,8 +70,8 @@ def detect_end_of_night():
 def check_pin(ID, name):
     """this function asks for the user to enter a pin, if it matches with the
     pin on file, we return True else we return false"""
-    Pin = input("Enter Pin: ")
-    screen.input_lcd("Pin:")
+    #Pin = input("Enter Pin: ")
+    Pin = screen.input_lcd("Pin:")
     f = open("ID.txt", "r")
     txt = f.read()
     f.close()
@@ -108,6 +104,7 @@ def time_table():
         # matches the fob ID. This is to ensure no accidental entries. if the
         # pin is incorrect we should abort logging and saving.
         if check_pin(ID, name) == False:
+            screen.print_lcd("Incorrect Pin!", 1)
             print("Pin Does not match ID/name")
             return
 
@@ -121,6 +118,9 @@ def time_table():
                 # also log to excel file
                 fakelog()
             else:
+                screen.print_lcd("Checked in/out", 1)
+                screen.print_lcd("6 times!", 2)
+                time.sleep(5)
                 print("max check in/out times reached for " + name + " today!")
                 return
 
@@ -130,6 +130,10 @@ def time_table():
             # also log to excel file
             fakelog()
         # printing to the console
+
+        screen.print_lcd(name, 1)
+        screen.print_lcd(str(datetime.datetime.now().strftime("%H:%M")), 2)
+
         print("*************New Table***************")
         for key, val in time_tables:
             print(str(key) + " " +  str(val) + ":")
@@ -137,12 +141,14 @@ def time_table():
                 print(str(t))
             print("------------------------------")
 
+        time.sleep(5)
 # program start
 
 if __name__ == "__main__":
 
     while(True):
-
+        screen.lcd.lcd_clear()
+        screen.print_lcd("Place Key...", 1)
         detect_end_of_day()
         detect_end_of_night()
 

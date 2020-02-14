@@ -6,19 +6,29 @@ lcd.lcd_clear()
 
 def print_lcd(string, line):
     if(len(string) <= 16):
-        lcd.lcd_clear()
         lcd.lcd_display_string(string, line)
 
 def input_lcd(string):
     lcd.lcd_clear()
     lcd.lcd_display_string(string, 1)
-
+    input_char = []
     while(True):
-        input_char = get_char_keyboard()
-        print(input_char)
-        if (input_char == "-"):
+        c = get_char_keyboard()
+        if (c == '\x7f'):
+            if len(input_char) > 0:
+                input_char.pop()
+            lcd.lcd_display_string("                ",2)
+            lcd.lcd_display_string(input_char, 2)
+        elif (c == '\n'):
             break
-        lcd.lcd_display_string(input_char, 2)
+        else:
+            input_char.append(c)
+            lcd.lcd_display_string("                ",2)
+            lcd.lcd_display_string(input_char, 2)
+            #print(input_char)
+    lcd.lcd_clear()
+    return ''.join(input_char)
+
 
 def get_char_keyboard():
     fd = sys.stdin.fileno()
