@@ -4,6 +4,7 @@ import datetime
 import RFID as RFID
 import LCD as screen
 import time
+import Write as Addkey
 """
 -------------NOTES---------------
 1.) By default we should be reading (done)
@@ -17,6 +18,9 @@ the times back by 12 hours.
 8.) we log the 10pm-6am at 6 (night shift)
 ---------------------------------
 """
+# management ID
+MANAGEMENT_ID = 90698293795
+
 # initialize reader object
 reader = RFID.RFID()
 
@@ -78,13 +82,18 @@ def check_pin(ID, name):
     txt = txt.split("\n")
     for line in txt:
         data = line.split(":")
-        #print (repr(data))
-        #print (repr(ID))
-        #print (repr(Pin))
-        #print (repr(name))
         if str(ID) == data[0] and Pin == data[1] and name == ''.join(data[2].split()):
             return True
     return False
+
+def print_time_table():
+    global time_tables
+    print("*************New Table***************")
+    for key, val in time_tables:
+        print(str(key) + " " +  str(val) + ":")
+        for t in time_tables[(key,val)]:
+            print(str(t))
+        print("------------------------------")
 
 def time_table():
 
@@ -99,6 +108,10 @@ def time_table():
     if time_difference.total_seconds() > time_interval:
         # this should block until something is read.
         ID, name = reader.read_fob()
+        global MANAGEMENT_ID
+        if(ID == MANAGEMENT_ID):
+            manager_command()
+            return
         name = ''.join(name.split())
         # here we look at the pin log file and check to see if their input pin
         # matches the fob ID. This is to ensure no accidental entries. if the
@@ -130,19 +143,55 @@ def time_table():
             # also log to excel file
             fakelog()
         # printing to the console
-
+        print_time_table()
         screen.print_lcd(name, 1)
         screen.print_lcd(str(datetime.datetime.now().strftime("%H:%M")), 2)
 
-        print("*************New Table***************")
-        for key, val in time_tables:
-            print(str(key) + " " +  str(val) + ":")
-            for t in time_tables[(key,val)]:
-                print(str(t))
-            print("------------------------------")
-
         time.sleep(5)
 # program start
+
+# management functions
+def manager_command():
+    command = screen.input_lcd("Enter cmd (1-3):")
+
+    if command == "1":
+        confirm = screen.input_lcd("Clear? . cancel")
+        if confirm == "":
+            clear_time_data()
+    elif command == "2":
+        confirm = screen.input_lcd("Clear? . cancel")
+        if confirm == "":
+            clear_employee_table()
+    elif command == "3":
+        confirm = screen.input_lcd("add? . cancel")
+        if confirm == "":
+            add_employee()
+    else:
+        pass
+
+def clear_time_data():
+    """This function clears the time table dictionary for a fresh start"""
+    global time_tables
+    time_tables = {}
+    print("data cleared!")
+    screen.print_lcd("Cleared!", 1)
+    time.sleep(2)
+
+def clear_employee_table():
+    """This function clears the ID.txt file which contains all the emplyees
+    with their pins"""
+    f = open("ID.txt","w")
+    f.write("")
+    f.close()
+    screen.print_lcd("Cleared", 1)
+    screen.print_lcd("Employees", 2)
+    time.sleep(2)
+
+def add_employee():
+    """This function allows for adding an employee to ID.txt"""
+    Addkey.write_fob()
+    screen.print_lcd("Added!", 1)
+    time.sleep(2)
 
 if __name__ == "__main__":
 
