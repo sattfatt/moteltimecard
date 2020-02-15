@@ -1,5 +1,6 @@
 import lcddriver
 import termios, fcntl, sys, os
+import readchar as rc
 # initialize lcd Driver
 lcd = lcddriver.lcd()
 lcd.lcd_clear()
@@ -13,13 +14,15 @@ def input_lcd(string):
     lcd.lcd_display_string(string, 1)
     input_char = []
     while(True):
-        c = get_char_keyboard()
+        c = rc.readchar()
+#        print(repr(c))
+       # c = get_char_keyboard()
         if (c == '\x7f'):
             if len(input_char) > 0:
                 input_char.pop()
             lcd.lcd_display_string("                ",2)
             lcd.lcd_display_string(input_char, 2)
-        elif (c == '\n'):
+        elif (c == '\n' or c == '\r'):
             break
         else:
             input_char.append(c)
@@ -41,5 +44,5 @@ def get_char_keyboard():
         c = sys.stdin.read(1)
     except IOError: pass
 
-    termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
+    termios.tcsetattr(fd, termios.TCSADRAIN, oldterm)
     return c

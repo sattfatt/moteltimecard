@@ -21,6 +21,9 @@ the times back by 12 hours.
 # management ID
 MANAGEMENT_ID = 90698293795
 
+# ID path
+IDPATH = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/ID.txt"
+
 # initialize reader object
 reader = RFID.RFID()
 
@@ -76,7 +79,7 @@ def check_pin(ID, name):
     pin on file, we return True else we return false"""
     #Pin = input("Enter Pin: ")
     Pin = screen.input_lcd("Pin:")
-    f = open("ID.txt", "r")
+    f = open(IDPATH, "r")
     txt = f.read()
     f.close()
     txt = txt.split("\n")
@@ -119,6 +122,7 @@ def time_table():
         if check_pin(ID, name) == False:
             screen.print_lcd("Incorrect Pin!", 1)
             print("Pin Does not match ID/name")
+            time.sleep(5)
             return
 
         time_between_reads = datetime.datetime.now()
@@ -166,6 +170,10 @@ def manager_command():
         confirm = screen.input_lcd("add? . cancel")
         if confirm == "":
             add_employee()
+    elif command == "4":
+        confirm = screen.input_lcd("Remove? . cancel")
+        if confirm == "":
+            remove_employee()
     else:
         pass
 
@@ -180,7 +188,7 @@ def clear_time_data():
 def clear_employee_table():
     """This function clears the ID.txt file which contains all the emplyees
     with their pins"""
-    f = open("ID.txt","w")
+    f = open(IDPATH,"w")
     f.write("")
     f.close()
     screen.print_lcd("Cleared", 1)
@@ -192,6 +200,24 @@ def add_employee():
     Addkey.write_fob()
     screen.print_lcd("Added!", 1)
     time.sleep(2)
+
+def remove_employee():
+    identifier = screen.input_lcd("Employee: ")
+    f = open(IDPATH, "r")
+    txt = f.read()
+    f.close()
+    data = txt.split("\n")
+    for line in data:
+        e = line.split(":")
+        for item in e:
+            if item == str(identifier):
+                data.remove(line)
+                screen.print_lcd("Removed!",1)
+                time.sleep(2)
+    f = open(IDPATH, "w")
+    f.write("\n".join(data) + "\n")
+    f.close()
+
 
 if __name__ == "__main__":
 
