@@ -156,7 +156,7 @@ def time_table():
 
 # management functions
 def manager_command():
-    command = screen.input_lcd("Enter cmd (1-3):")
+    command = screen.input_lcd("Enter cmd (1-4):")
 
     if command == "1":
         confirm = screen.input_lcd("Clear? . cancel")
@@ -202,7 +202,7 @@ def add_employee():
     time.sleep(2)
 
 def remove_employee():
-    identifier = screen.input_lcd("Employee: ")
+    identifier = screen.input_lcd_text("Employee: ")
     f = open(IDPATH, "r")
     txt = f.read()
     f.close()

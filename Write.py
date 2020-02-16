@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import time
 import RPi.GPIO as GPIO
 import TimeCardSystem as tc
 
@@ -14,7 +14,8 @@ def write_fob():
     try:
         while(True):
             #text = input('New Data: ')
-            text = tc.screen.input_lcd("New Data:")
+            #text = tc.screen.input_lcd("New Data:")
+            text = tc.screen.input_lcd_text("Name:")
             text = ''.join(text.split())
             #pin1 = input('New Pin: ')
             pin1 = tc.screen.input_lcd("New Pin:")
@@ -26,7 +27,8 @@ def write_fob():
                 print("pins do not match, please try again")
 
         print("Now place your key next to reader")
-
+        tc.screen.lcd.lcd_clear()
+        tc.screen.print_lcd("Place Key", 1)
         ID, name = reader.read()
 
         f = open(tc.IDPATH, "r")
@@ -50,7 +52,6 @@ def write_fob():
         f.close()
         reader.write(text)
         print("written")
-
     # todo FIX.
 
     finally:
