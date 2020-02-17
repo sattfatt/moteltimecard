@@ -66,6 +66,40 @@ def input_lcd_text(string):
             lcd.lcd_clear()
             return ''.join(input_array)
 
+def input_select_command_list(commands):
+    lcd.lcd_clear()
+    index = 0
+    selected = commands[0]
+    lcd.lcd_display_string(commands[index].split("-")[0], 1)
+    try:
+        lcd.lcd_display_string(commands[index].split("-")[1], 2)
+    except:
+        pass
+    while(True):
+        c = rc.readchar()
+        if c == "8":
+            if index < len(commands) - 1:
+                index = index + 1
+            selected = commands[index]
+            lcd.lcd_clear()
+            lcd.lcd_display_string(commands[index].split("-")[0], 1)
+            try:
+                lcd.lcd_display_string(commands[index].split("-")[1], 2)
+            except:
+                pass
+        if c == "2":
+            if index > 0:
+                index = index - 1
+            selected = commands[index]
+            lcd.lcd_clear()
+            lcd.lcd_display_string(commands[index].split("-")[0], 1)
+            try:
+                lcd.lcd_display_string(commands[index].split("-")[1], 2)
+            except:
+                pass
+        if c == "\n" or c == "\r":
+            lcd.lcd_clear()
+            return selected
 
 def get_char_keyboard():
     fd = sys.stdin.fileno()

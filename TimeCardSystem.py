@@ -78,7 +78,9 @@ def check_pin(ID, name):
     """this function asks for the user to enter a pin, if it matches with the
     pin on file, we return True else we return false"""
     #Pin = input("Enter Pin: ")
-    Pin = screen.input_lcd("Pin:")
+    Pin = screen.input_lcd("Pin " + str(name))
+    if Pin == "*":
+        return -1
     f = open(IDPATH, "r")
     txt = f.read()
     f.close()
@@ -86,8 +88,8 @@ def check_pin(ID, name):
     for line in txt:
         data = line.split(":")
         if str(ID) == data[0] and Pin == data[1] and name == ''.join(data[2].split()):
-            return True
-    return False
+            return 1
+    return 0
 
 def print_time_table():
     global time_tables
@@ -119,10 +121,14 @@ def time_table():
         # here we look at the pin log file and check to see if their input pin
         # matches the fob ID. This is to ensure no accidental entries. if the
         # pin is incorrect we should abort logging and saving.
-        if check_pin(ID, name) == False:
+        check = check_pin(ID, name)
+        if check == 0:
             screen.print_lcd("Incorrect Pin!", 1)
             print("Pin Does not match ID/name")
             time.sleep(5)
+            return
+        elif check == -1:
+            manager_command()
             return
 
         time_between_reads = datetime.datetime.now()
@@ -156,26 +162,33 @@ def time_table():
 
 # management functions
 def manager_command():
-    command = screen.input_lcd("Enter cmd (1-4):")
-
-    if command == "1":
+    #command = screen.input_lcd("Enter cmd (1-4):")
+    commands = ["Display-Times", "Add-Employee", "Remove-Employee", "Clear-Time Data", "Clear-Employee Data", "Change-Pin"]
+    selected = screen.input_select_command_list(commands)
+    if selected == commands[3]:
         confirm = screen.input_lcd("Clear? . cancel")
         if confirm == "":
             clear_time_data()
-    elif command == "2":
+    elif selected  == commands[4]:
         confirm = screen.input_lcd("Clear? . cancel")
         if confirm == "":
             clear_employee_table()
-    elif command == "3":
+    elif selected  == commands[1]:
         confirm = screen.input_lcd("add? . cancel")
         if confirm == "":
             add_employee()
-    elif command == "4":
+    elif selected  == commands[2]:
         confirm = screen.input_lcd("Remove? . cancel")
         if confirm == "":
             remove_employee()
-    else:
-        pass
+    elif selected == commands[5]:
+        confirm = screen.input_lcd("Change? . cancel")
+        if confirm == "":
+            change_pin()
+    elif selected == commands[0]:
+        confirm = screen.input_lcd("Display? . cancel")
+        if confirm == "":
+            display_times()
 
 def clear_time_data():
     """This function clears the time table dictionary for a fresh start"""
@@ -202,11 +215,17 @@ def add_employee():
     time.sleep(2)
 
 def remove_employee():
-    identifier = screen.input_lcd_text("Employee: ")
+    #identifier = screen.input_lcd_text("Employee: ")
     f = open(IDPATH, "r")
     txt = f.read()
     f.close()
     data = txt.split("\n")
+    employees = []
+    for line in data:
+        e = line.split(":")
+        if len(e) == 3:
+            employees.append(e[2])
+    identifier = screen.input_select_command_list(employees)
     for line in data:
         e = line.split(":")
         for item in e:
@@ -214,10 +233,77 @@ def remove_employee():
                 data.remove(line)
                 screen.print_lcd("Removed!",1)
                 time.sleep(2)
+    newdata = [i for i in data if i]
     f = open(IDPATH, "w")
-    f.write("\n".join(data) + "\n")
+    f.write("\n".join(newdata) + "\n")
     f.close()
 
+def display_times():
+    f = open(IDPATH, "r")
+    txt = f.read()
+    f.close()
+    data = txt.split("\n")
+    employees = []
+    ids = {}
+    for line in data:
+        e = line.split(":")
+        if len(e) == 3:
+            employees.append(e[2])
+            ids[e[2]] = e[0]
+    name = screen.input_select_command_list(employees)
+    #try:
+    timelist = time_tables[(int(ids[name]), name)]
+    timelist = [str(i.strftime("%H:%M:%S")) for i in timelist]
+    screen.input_select_command_list(timelist)
+    #except:
+    #    screen.print_lcd("Error!", 1)
+    #    time.sleep(2)
+
+def change_pin():
+    f = open(IDPATH, "r")
+    txt = f.read()
+    f.close()
+    data = txt.split("\n")
+    newpin = ""
+    employees = []
+    for line in data:
+        e = line.split(":")
+        if len(e) == 3:
+            employees.append(e[2])
+    print(employees)
+    name = screen.input_select_command_list(employees)
+    #name = screen.input_lcd_text("Name:")
+    while(True):
+        newpin = screen.input_lcd("New Pin:")
+        newpin2 = screen.input_lcd("Enter Again:")
+        if newpin == newpin2:
+            break
+        else:
+            screen.lcd.lcd_clear()
+            screen.print_lcd("No Match", 1)
+            screen.print_lcd("Try Again", 2)
+            time.sleep(2)
+    for line in data:
+        e = line.split(":")
+        if len(e) == 3:
+            if name == e[2]:
+                e[1] = newpin
+                data.remove(line)
+                newline = ":".join(e)
+                data.append(newline)
+                newdata = [i for i in data if i]
+                print(newdata)
+                f = open(IDPATH, "w")
+                f.write("\n".join(newdata) + "\n")
+                f.close
+                screen.lcd.lcd_clear()
+                screen.print_lcd("Pin Changed!", 1)
+                time.sleep(2)
+                return
+    screen.lcd.lcd_clear()
+    screen.print_lcd("Does Not", 1)
+    screen.print_lcd("Exist!", 2)
+    time.sleep(2)
 
 if __name__ == "__main__":
 
