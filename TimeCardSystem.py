@@ -251,13 +251,14 @@ def display_times():
             employees.append(e[2])
             ids[e[2]] = e[0]
     name = screen.input_select_command_list(employees)
-    #try:
-    timelist = time_tables[(int(ids[name]), name)]
-    timelist = [str(i.strftime("%H:%M:%S")) for i in timelist]
-    screen.input_select_command_list(timelist)
-    #except:
-    #    screen.print_lcd("Error!", 1)
-    #    time.sleep(2)
+    try:
+        timelist = time_tables[(int(ids[name]), name)]
+        timelist = [str(i.strftime("%H:%M:%S")) for i in timelist]
+        screen.input_select_command_list(timelist)
+    except:
+        screen.print_lcd("Error!", 1)
+        screen.print_lcd("No Data", 2)
+        time.sleep(2)
 
 def change_pin():
     f = open(IDPATH, "r")
