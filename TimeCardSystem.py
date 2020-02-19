@@ -5,6 +5,7 @@ import RFID as RFID
 import LCD as screen
 import time
 import Write as Addkey
+import pickle
 """
 -------------NOTES---------------
 1.) By default we should be reading (done)
@@ -23,6 +24,7 @@ MANAGEMENT_ID = 90698293795
 
 # ID path
 IDPATH = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/ID.txt"
+TTPATH = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/time_tables.pkl"
 
 # initialize reader object
 reader = RFID.RFID()
@@ -47,8 +49,6 @@ end_of_night_val = (5,59)
 time_between_reads = datetime.datetime.now()
 
 max_checks_in_day = 6
-
-time_tables = {}
 
 def end_of_day():
     """at the end of the night shift  make sure to log the dictionary and reset the
@@ -140,6 +140,7 @@ def time_table():
                 time_tables[(ID, name)].append(datetime.datetime.now())
                 # also log to excel file
                 fakelog()
+                save_time_table()
             else:
                 screen.print_lcd("Checked in/out", 1)
                 screen.print_lcd("6 times!", 2)
@@ -152,9 +153,11 @@ def time_table():
             time_tables[(ID, name)].append(datetime.datetime.now())
             # also log to excel file
             fakelog()
+            save_time_table()
         # printing to the console
+        io = ["In", "Out"]
         print_time_table()
-        screen.print_lcd(name, 1)
+        screen.print_lcd(name + " " + io[(len(time_tables[(ID,name)]) - 1) % 2] + " " + str(len(time_tables[(ID,name)])), 1)
         screen.print_lcd(str(datetime.datetime.now().strftime("%H:%M")), 2)
 
         time.sleep(5)
@@ -194,6 +197,7 @@ def clear_time_data():
     """This function clears the time table dictionary for a fresh start"""
     global time_tables
     time_tables = {}
+    save_time_table()
     print("data cleared!")
     screen.print_lcd("Cleared!", 1)
     time.sleep(2)
@@ -252,8 +256,10 @@ def display_times():
             ids[e[2]] = e[0]
     name = screen.input_select_command_list(employees)
     try:
+        io = ["In", "Out"]
         timelist = time_tables[(int(ids[name]), name)]
         timelist = [str(i.strftime("%H:%M:%S")) for i in timelist]
+        timelist = [i + " " + str(io[ind % 2] + " " + str(ind + 1)) for ind, i in enumerate(timelist)]
         screen.input_select_command_list(timelist)
     except:
         screen.print_lcd("Error!", 1)
@@ -306,6 +312,15 @@ def change_pin():
     screen.print_lcd("Exist!", 2)
     time.sleep(2)
 
+def save_time_table():
+    cur_time = datetime.datetime.now()
+    global time_tables
+    pickle.dump(time_tables, open(TTPATH, "wb"))
+
+def load_time_table():
+    return pickle.load(open(TTPATH, "rb"))
+
+
 if __name__ == "__main__":
 
     while(True):
@@ -313,13 +328,17 @@ if __name__ == "__main__":
         screen.print_lcd("Place Key...", 1)
         detect_end_of_day()
         detect_end_of_night()
-
         if(isEndOfDay):
-            end_of_day()
+            #end_of_day()
             print("End of day shift reached!")
             isEndOfDay = False
         if(isEndOfNight):
-            end_of_night()
+            #end_of_night()
             print("End of night shift reached!")
             isEndOfNight = False
+        try:
+            time_tables = load_time_table()
+        except:
+            print("failed to open " + TTPATH)
+            pass
         time_table()
