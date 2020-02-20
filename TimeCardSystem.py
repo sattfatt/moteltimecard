@@ -143,7 +143,7 @@ def time_table():
         time_between_reads = datetime.datetime.now()
 
         day_night = "D"
-        if datetime.datetime.now().time().hour > NIGHTSHIFTCUTOFF[0] and datetime.datetime.now().hour > \
+        if datetime.datetime.now().hour >= NIGHTSHIFTCUTOFF[0] and datetime.datetime.now().minute >= \
                 NIGHTSHIFTCUTOFF[1]:
             day_night = "N"
         # this means if someone checks in/out we are in the night shift
@@ -174,7 +174,7 @@ def time_table():
         print_time_table()
         screen.print_lcd(
             name + " " + io[(len(time_tables[(ID, name)]) - 1) % 2] + " " + str(len(time_tables[(ID, name)])), 1)
-        screen.print_lcd(str(datetime.datetime.now().strftime("%H:%M")), 2)
+        screen.print_lcd(str(datetime.datetime.now().strftime("%H:%M") + " " + day_night), 2)
 
         time.sleep(5)
 
@@ -279,11 +279,13 @@ def display_times():
             employees.append(e[2])
             ids[e[2]] = e[0]
     name = screen.input_select_command_list(employees)
+    print(time_tables)
     try:
+        shift = time_tables[(int(ids[name]), name)][0][1]
         io = ["In", "Out"]
         timelist = time_tables[(int(ids[name]), name)]
         timelist = [str(i[0].strftime("%H:%M:%S")) for i in timelist]
-        timelist = [i[0] + " " + str(io[ind % 2] + " " + str(ind + 1)) for ind, i in enumerate(timelist)]
+        timelist = [i + " " + str(io[ind % 2] + " " + str(ind + 1) + " " +shift) for ind, i in enumerate(timelist)]
         screen.input_select_command_list(timelist)
     except:
         screen.print_lcd("Error!", 1)
