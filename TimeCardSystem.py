@@ -133,7 +133,7 @@ def time_table():
 
         time_between_reads = datetime.datetime.now()
 
-        # when we read we should keep note of the time between reads
+        day_night = ["D","N"]
 
         if (ID, name) in time_tables:
             if len(time_tables[(ID, name)]) < 6:
