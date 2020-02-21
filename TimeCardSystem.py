@@ -6,7 +6,8 @@ import LCD as screen
 import time
 import Write as Addkey
 import pickle
-
+import queue as Q
+from threading import Thread
 """
 -------------NOTES---------------
 1.) By default we should be reading (done)
@@ -24,8 +25,11 @@ the times back by 12 hours.
 MANAGEMENT_ID = 90698293795
 
 # ID path
-IDPATH = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/ID.txt"
-TTPATH = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/time_tables.pkl"
+IDPATH  = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/ID.txt"
+TTPATH  = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/time_tables.pkl"
+TTLPATH = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/tlogs/"
+
+
 
 NIGHTSHIFTCUTOFF = (21, 30)
 
@@ -38,38 +42,67 @@ time_tables = {}
 
 # time interval for reading
 time_interval = 1
-
+#---------------only write in time_checker----------------
 # end of day bool
 isEndOfDay = False
 # end of night shift bool
 isEndOfNight = False
-
+#---------------------------------------------------------
 # end of day value
-end_of_day_val = (23, 59)
+end_of_day_val = (17, 26)
 
-end_of_night_val = (5, 59)
+end_of_night_val = (6, 30)
 
 time_between_reads = datetime.datetime.now()
 
 max_checks_in_day = 6
 
+tq = Q.Queue(2)
+
+time_check_thread = Thread(target=time_check_thread)
+time_check_thread.daemon = True
+
+def time_checker():
+    while(True):
+        ct = datetime.datetime.now()
+        detect_end_of_day()
+        detect_end_of_night()
+        if isEndOfDay:
+            tq.put("dend")
+            isEndOfDay = False
+        if isEndOfNight:
+            tq.put("nend")
+            isEndOfNight = False
 
 def end_of_day():
-    """at the end of the night shift  make sure to log the dictionary and reset the
-    night shift dictionary entries."""
-    fakelog()
     global time_tables
-    time_tables = {}
+    day_time_tables = {key:value for (key, value) in time_tables.items() if value[0][1] == "D"}
+    curdt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    pickle.dump(day_time_tables, open(TTLPATH + curdt + "-D.pkl", "wb"))
+    temp = {key:value for (key, value) in time_tables.items() if value[0][1] != "D"}
+    time_tables = temp
+
+
+def end_of_night():
+    global time_tables
+    day_time_tables = {key:value for (key, value) in time_tables.items() if value[0][1] == "N"}
+    curdt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    pickle.dump(day_time_tables, open(TTLPATH + curdt + "-N.pkl", "wb"))
+    temp = {key:value for (key, value) in time_tables.items() if value[0][1] != "N"}
+    time_tables = temp
 
 
 def fakelog():
+    #day_time_tables = {key:value for (key, value) in time_tables.items() if value[0][1] == "D"}
+    #print(i for i in day_time_tables.items())
     print("fake logging.......Done")
 
 
 def detect_end_of_day():
     """This function detects the end of the day shift"""
-    current_time = datetime.datetime.now()
-    if current_time.time().hour == end_of_day_val[0] and current_time.time().minute == end_of_day_val[1]:
+    ct = datetime.datetime.now()
+    global end_of_day_val
+    if ct.hour == end_of_day_val[0] and ct.minute == end_of_day_val[1]:
         global isEndOfDay
         isEndOfDay = True
 
@@ -106,7 +139,7 @@ def print_time_table():
     for key, val in time_tables:
         print(str(key) + " " + str(val) + ":")
         for t in time_tables[(key, val)]:
-            print(str(t))
+            print(str(t[0]) + t[1])
         print("------------------------------")
 
 
@@ -120,11 +153,26 @@ def time_table():
     time_difference = datetime.datetime.now() - time_between_reads
 
     if time_difference.total_seconds() > time_interval:
-        # this should block until something is read.
-        ID, name = reader.read_fob()
+        #ID, name = reader.read_fob()
+        ID, name = reader.read_no_block()
+        if(not ID or not name):
+            return
+        # for non blocking we start thread maybe
+        '''
+        global read_thread
+        if read_thread.isAlive() == False:
+            read_thread.start()
+        #time.sleep(1)
+        if(fq.empty() == False):
+            ID, name = fq.get()
+        else:
+            return
+        '''
         global MANAGEMENT_ID
         if (ID == MANAGEMENT_ID):
             manager_command()
+            screen.lcd.lcd_clear()
+            screen.print_lcd("Place Key...", 1)
             return
         name = ''.join(name.split())
         # here we look at the pin log file and check to see if their input pin
@@ -138,6 +186,8 @@ def time_table():
             return
         elif check == -1:
             manager_command()
+            screen.lcd.lcd_clear()
+            screen.print_lcd("Place Key...", 1)
             return
 
         time_between_reads = datetime.datetime.now()
@@ -161,6 +211,8 @@ def time_table():
                 screen.print_lcd("6 times!", 2)
                 time.sleep(5)
                 print("max check in/out times reached for " + name + " today!")
+                screen.lcd.lcd_clear()
+                screen.print_lcd("Place Key...", 1)
                 return
 
         else:
@@ -173,11 +225,13 @@ def time_table():
         io = ["In", "Out"]
         print_time_table()
         screen.print_lcd(
-            name + " " + io[(len(time_tables[(ID, name)]) - 1) % 2] + " " + str(len(time_tables[(ID, name)])), 1)
-        screen.print_lcd(str(datetime.datetime.now().strftime("%H:%M") + " " + day_night), 2)
+            name , 1)
+        screen.print_lcd(str(datetime.datetime.now().strftime("%H:%M") + " " + day_night + " " + io[(len(time_tables[(ID, name)]) - 1) % 2] + " " + str(len(time_tables[(ID, name)]))), 2)
 
         time.sleep(5)
-
+        screen.lcd.lcd_clear()
+        screen.print_lcd("Place Key...", 1)
+        return
 
 # program start
 
@@ -351,23 +405,21 @@ def load_time_table():
 
 
 if __name__ == "__main__":
-
+    screen.lcd.lcd_clear()
+    screen.print_lcd("Place Key...", 1)
     while (True):
-        screen.lcd.lcd_clear()
-        screen.print_lcd("Place Key...", 1)
         detect_end_of_day()
         detect_end_of_night()
         if (isEndOfDay):
-            # end_of_day()
+            end_of_day()
             print("End of day shift reached!")
             isEndOfDay = False
         if (isEndOfNight):
-            # end_of_night()
+            end_of_night()
             print("End of night shift reached!")
             isEndOfNight = False
         try:
             time_tables = load_time_table()
         except:
             print("failed to open " + TTPATH)
-            pass
         time_table()
