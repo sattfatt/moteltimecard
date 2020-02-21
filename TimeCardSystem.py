@@ -9,16 +9,9 @@ import pickle
 import queue as Q
 from threading import Thread
 """
--------------NOTES---------------
-1.) By default we should be reading (done)
-2.) if certain criteria is met, we call the write function
-3.) We need to keep track of the date and time for each read. (done)
-4.) each read has to have a gap of 5 min or so between reads (pretty much done)
-5.) at the end of the day the table of times has to be logged to a file with the date
-6.) for the night shift we need to log the times differently (we could shift
-the times back by 12 hours.
-7.) we only log the 6am-2pm and 2pm-10pm shifts when end of day is triggered
-8.) we log the 10pm-6am at 6 (night shift)
+-------------TODO---------------
+1.) Test the time keeping on seperate branch code ( as well as logging) See if reading from the log files from the main thread causes issues
+2.) simplify any unnecessary code
 ---------------------------------
 """
 # management ID
@@ -28,8 +21,6 @@ MANAGEMENT_ID = 90698293795
 IDPATH  = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/ID.txt"
 TTPATH  = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/time_tables.pkl"
 TTLPATH = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/tlogs/"
-
-
 
 NIGHTSHIFTCUTOFF = (21, 30)
 
@@ -59,11 +50,11 @@ max_checks_in_day = 6
 
 tq = Q.Queue(2)
 
-time_check_thread = Thread(target=time_check_thread)
-time_check_thread.daemon = True
 
 def time_checker():
     while(True):
+        global isEndOfDay
+        global isEndOfNight
         ct = datetime.datetime.now()
         detect_end_of_day()
         detect_end_of_night()
@@ -157,17 +148,7 @@ def time_table():
         ID, name = reader.read_no_block()
         if(not ID or not name):
             return
-        # for non blocking we start thread maybe
-        '''
-        global read_thread
-        if read_thread.isAlive() == False:
-            read_thread.start()
-        #time.sleep(1)
-        if(fq.empty() == False):
-            ID, name = fq.get()
-        else:
-            return
-        '''
+
         global MANAGEMENT_ID
         if (ID == MANAGEMENT_ID):
             manager_command()
@@ -405,9 +386,15 @@ def load_time_table():
 
 
 if __name__ == "__main__":
+    # start the time keeper thread
+    time_check_thread = Thread(target=time_checker)
+    time_check_thread.daemon = True
+    time_check_thread.start()
+
     screen.lcd.lcd_clear()
     screen.print_lcd("Place Key...", 1)
     while (True):
+        '''
         detect_end_of_day()
         detect_end_of_night()
         if (isEndOfDay):
@@ -418,6 +405,15 @@ if __name__ == "__main__":
             end_of_night()
             print("End of night shift reached!")
             isEndOfNight = False
+        '''
+        # handling the messages from the time checker thread.
+        while(not tq.empty()):
+            msg = tq.get()
+            if msg == "dend":
+                print("End of the Day shift reached!")
+            elif msg == "nend":
+                print("End of the Night shift reached!")
+
         try:
             time_tables = load_time_table()
         except:
