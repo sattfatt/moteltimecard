@@ -86,6 +86,7 @@ def time_checker():
             end_of_night()
         time.sleep(0.001)
 
+
 def end_of_day():
     """this function is run when the end of day is detected. It creats a new
     dictionary from the time_tables dictionary and saves that to the TTLPATH
@@ -96,7 +97,7 @@ def end_of_day():
     day_time_tables = {key:value for (key, value) in time_tables.items() if value[0][1] == "D"}
     curdt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     pickle.dump(day_time_tables, open(TTLPATH + curdt + "-D.pkl", "wb"))
-    temp = {key:value for (key, value) in time_tables.items() if value[0][1] != "D"}
+    temp = {key:value for (key, value) in time_tables.items() if value[0][1] == "N"}
     time_tables = temp
     for i in time_tables:
         print(i)
@@ -109,7 +110,7 @@ def end_of_night():
     night_time_tables = {key:value for (key, value) in time_tables.items() if value[0][1] == "N"}
     curdt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     pickle.dump(night_time_tables, open(TTLPATH + curdt + "-N.pkl", "wb"))
-    temp = {key:value for (key, value) in time_tables.items() if value[0][1] != "N"}
+    temp = {key:value for (key, value) in time_tables.items() if value[0][1] == "D"}
     time_tables = temp
     for i in time_tables:
         print(i)
@@ -203,8 +204,6 @@ def time_table():
     if time_difference.total_seconds() > time_interval:
         time_between_reads = datetime.datetime.now()
         ID, name = reader.read_fob()
-        print("here")
-        sys.stdout.flush()
         #ID, name = reader.read_no_block()
         if(not ID or not name):
             return
@@ -269,8 +268,7 @@ def time_table():
         # printing to the console
         io = ["In", "Out"]
         print_time_table()
-        screen.print_lcd(
-            name , 1)
+        screen.print_lcd(name , 1)
         screen.print_lcd(str(datetime.datetime.now().strftime("%H:%M") + " " + day_night + " " + io[(len(time_tables[(ID, name)]) - 1) % 2] + " " + str(len(time_tables[(ID, name)]))), 2)
 
         time.sleep(5)
@@ -344,6 +342,9 @@ def add_employee():
 
 
 def remove_employee():
+    """This function removes an employee from the ID.txt file. This effectively
+    removes them from the system. (their data will still be available in
+    dictionary however)"""
     # identifier = screen.input_lcd_text("Employee: ")
     f = open(IDPATH, "r")
     txt = f.read()
@@ -369,6 +370,8 @@ def remove_employee():
 
 
 def display_times():
+    """This function displays the times of each employee on the lcd. Navigation
+    is done with the arrow keys"""
     f = open(IDPATH, "r")
     txt = f.read()
     f.close()
@@ -397,6 +400,7 @@ def display_times():
 
 
 def change_pin():
+    """This funtion changes the pin of an employee in ID.txt"""
     f = open(IDPATH, "r")
     txt = f.read()
     f.close()
@@ -446,12 +450,15 @@ def change_pin():
 
 #------END OF Management Functions----------------------
 def save_time_table():
+    """This function saves the timetable to the same directory as
+    time_tables.pkl"""
     cur_time = datetime.datetime.now()
     global time_tables
     pickle.dump(time_tables, open(TTPATH, "wb"))
 
 
 def load_time_table():
+    """This function loads the time table at TTPATH"""
     return pickle.load(open(TTPATH, "rb"))
 
 
