@@ -1,5 +1,8 @@
-#!/usr/bin/env/ python
+#dfadfasdf!/usr/bin/env/ python -u
+
+
 # hello chinmay
+import sys
 import datetime
 import RFID as RFID
 import LCD as screen
@@ -39,10 +42,14 @@ isEndOfDay = False
 # end of night shift bool
 isEndOfNight = False
 #---------------------------------------------------------
-# end of day value
-end_of_day_val = (17, 26)
+checked_day = False
+checked_night = False
+# end of night/day value
+end_of_day_val = (22, 30)
+end_of_day_reset = (22,31)
 
 end_of_night_val = (6, 30)
+end_of_night_reset = (6, 31)
 
 time_between_reads = datetime.datetime.now()
 
@@ -52,6 +59,11 @@ tq = Q.Queue(2)
 
 
 def time_checker():
+    """This function calls the detect_end_of_day and detect_end_of_night
+    functions. If they flip the isEndOfDay or isEndOfNight bools, it calls the
+    end_of_day or end_of_night functions. Note that this function runs on its
+    own thread as a daemon. It also sends a message to the main thread via
+    Queue (if we want to display a message or something)"""
     while(True):
         global isEndOfDay
         global isEndOfNight
@@ -59,51 +71,88 @@ def time_checker():
         detect_end_of_day()
         detect_end_of_night()
         if isEndOfDay:
+            # here we should log day shift to a file
             tq.put("dend")
             isEndOfDay = False
+            print("End of day!")
+            sys.stdout.flush()
+            end_of_day()
         if isEndOfNight:
+            # here we log the night shift to a file
             tq.put("nend")
             isEndOfNight = False
+            print("End of night!")
+            sys.stdout.flush()
+            end_of_night()
+        time.sleep(0.001)
 
 def end_of_day():
+    """this function is run when the end of day is detected. It creats a new
+    dictionary from the time_tables dictionary and saves that to the TTLPATH
+    directory. Lastly, it empties out the entries in the dictionary that are
+    Day shifts thus resetting those employees """
+
     global time_tables
     day_time_tables = {key:value for (key, value) in time_tables.items() if value[0][1] == "D"}
     curdt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     pickle.dump(day_time_tables, open(TTLPATH + curdt + "-D.pkl", "wb"))
     temp = {key:value for (key, value) in time_tables.items() if value[0][1] != "D"}
     time_tables = temp
+    for i in time_tables:
+        print(i)
+        sys.stdout.flush()
 
 
 def end_of_night():
+    """same functionality as end_of_day but for the night shift"""
     global time_tables
-    day_time_tables = {key:value for (key, value) in time_tables.items() if value[0][1] == "N"}
+    night_time_tables = {key:value for (key, value) in time_tables.items() if value[0][1] == "N"}
     curdt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    pickle.dump(day_time_tables, open(TTLPATH + curdt + "-N.pkl", "wb"))
+    pickle.dump(night_time_tables, open(TTLPATH + curdt + "-N.pkl", "wb"))
     temp = {key:value for (key, value) in time_tables.items() if value[0][1] != "N"}
     time_tables = temp
+    for i in time_tables:
+        print(i)
+        sys.stdout.flush()
 
 
 def fakelog():
     #day_time_tables = {key:value for (key, value) in time_tables.items() if value[0][1] == "D"}
     #print(i for i in day_time_tables.items())
     print("fake logging.......Done")
+    sys.stdout.flush()
 
 
 def detect_end_of_day():
     """This function detects the end of the day shift"""
     ct = datetime.datetime.now()
     global end_of_day_val
-    if ct.hour == end_of_day_val[0] and ct.minute == end_of_day_val[1]:
+    global end_of_day_reset
+    global checked_day
+    if ct.hour >= end_of_day_reset[0] and ct.minute >= end_of_day_reset[1] and ct.second >= 0:
+        checked_day = False
+        #print("checked_day reset to False")
+
+    if ct.hour == end_of_day_val[0] and ct.minute == end_of_day_val[1] and ct.second == 0 and not checked_day:
         global isEndOfDay
         isEndOfDay = True
+        checked_day = True
 
 
 def detect_end_of_night():
     """This function detects the end of the night shift"""
-    current_time = datetime.datetime.now()
-    if current_time.time().hour == end_of_night_val[0] and current_time.time().minute == end_of_night_val[1]:
+    ct = datetime.datetime.now()
+    global end_of_night_val
+    global end_of_night_reset
+    global checked_night
+    if ct.hour >= end_of_night_reset[0] and ct.minute >= end_of_night_reset[1] and ct.second >= 0:
+        checked_night = False
+        #print("checked_night reset to False")
+
+    if ct.hour == end_of_night_val[0] and ct.minute == end_of_night_val[1] and ct.second == 0 and not checked_night:
         global isEndOfNight
         isEndOfNight = True
+        checked_night = True
 
 
 def check_pin(ID, name):
@@ -127,25 +176,36 @@ def check_pin(ID, name):
 def print_time_table():
     global time_tables
     print("*************New Table***************")
+    sys.stdout.flush()
     for key, val in time_tables:
         print(str(key) + " " + str(val) + ":")
+        sys.stdout.flush()
         for t in time_tables[(key, val)]:
             print(str(t[0]) + t[1])
+            sys.stdout.flush()
         print("------------------------------")
+        sys.stdout.flush()
 
 
 def time_table():
     """This function listens for an RFID signal, reads it, and adds the ID,
     data, and Time and appends it to the time_table dictionary. The dictionary
-    is indexed by a tuple (ID,name) where ID is an int and name is a string"""
+    is indexed by a tuple (ID,name) where ID is an int and name is a string.
+    The values of the dict are lists of tuples where the first value is the
+    in/out time and the seconds is N or D for nightshift or dayshift. We also
+    pickle the dict every time a new time is logged so that on power loss we
+    can resume seamlessly."""
 
     global time_between_reads
-
+    global time_interval
     time_difference = datetime.datetime.now() - time_between_reads
 
     if time_difference.total_seconds() > time_interval:
-        #ID, name = reader.read_fob()
-        ID, name = reader.read_no_block()
+        time_between_reads = datetime.datetime.now()
+        ID, name = reader.read_fob()
+        print("here")
+        sys.stdout.flush()
+        #ID, name = reader.read_no_block()
         if(not ID or not name):
             return
 
@@ -163,7 +223,10 @@ def time_table():
         if check == 0:
             screen.print_lcd("Incorrect Pin!", 1)
             print("Pin Does not match ID/name")
+            sys.stdout.flush()
             time.sleep(5)
+            screen.lcd.lcd_clear()
+            screen.print_lcd("Place Key...", 1)
             return
         elif check == -1:
             manager_command()
@@ -192,6 +255,7 @@ def time_table():
                 screen.print_lcd("6 times!", 2)
                 time.sleep(5)
                 print("max check in/out times reached for " + name + " today!")
+                sys.stdout.flush()
                 screen.lcd.lcd_clear()
                 screen.print_lcd("Place Key...", 1)
                 return
@@ -218,6 +282,8 @@ def time_table():
 
 # management functions
 def manager_command():
+    """This function displays a menu on the LCD and based on the selection
+    calls a management function."""
     # command = screen.input_lcd("Enter cmd (1-4):")
     commands = ["Display-Times", "Add-Employee", "Remove-Employee", "Clear-Time Data", "Clear-Employee Data",
                 "Change-Pin"]
@@ -254,6 +320,7 @@ def clear_time_data():
     time_tables = {}
     save_time_table()
     print("data cleared!")
+    sys.stdout.flush()
     screen.print_lcd("Cleared!", 1)
     time.sleep(2)
 
@@ -315,6 +382,7 @@ def display_times():
             ids[e[2]] = e[0]
     name = screen.input_select_command_list(employees)
     print(time_tables)
+    sys.stdout.flush()
     try:
         shift = time_tables[(int(ids[name]), name)][0][1]
         io = ["In", "Out"]
@@ -340,6 +408,7 @@ def change_pin():
         if len(e) == 3:
             employees.append(e[2])
     print(employees)
+    sys.stdout.flush()
     name = screen.input_select_command_list(employees)
     # name = screen.input_lcd_text("Name:")
     while (True):
@@ -362,6 +431,7 @@ def change_pin():
                 data.append(newline)
                 newdata = [i for i in data if i]
                 print(newdata)
+                sys.stdout.flush()
                 f = open(IDPATH, "w")
                 f.write("\n".join(newdata) + "\n")
                 f.close()
@@ -374,7 +444,7 @@ def change_pin():
     screen.print_lcd("Exist!", 2)
     time.sleep(2)
 
-
+#------END OF Management Functions----------------------
 def save_time_table():
     cur_time = datetime.datetime.now()
     global time_tables
@@ -390,32 +460,21 @@ if __name__ == "__main__":
     time_check_thread = Thread(target=time_checker)
     time_check_thread.daemon = True
     time_check_thread.start()
-
+    try:
+        time_tables = load_time_table()
+    except:
+        print("failed to open " + TTPATH)
+        sys.stdout.flush()
     screen.lcd.lcd_clear()
     screen.print_lcd("Place Key...", 1)
     while (True):
-        '''
-        detect_end_of_day()
-        detect_end_of_night()
-        if (isEndOfDay):
-            end_of_day()
-            print("End of day shift reached!")
-            isEndOfDay = False
-        if (isEndOfNight):
-            end_of_night()
-            print("End of night shift reached!")
-            isEndOfNight = False
-        '''
         # handling the messages from the time checker thread.
-        while(not tq.empty()):
-            msg = tq.get()
-            if msg == "dend":
-                print("End of the Day shift reached!")
-            elif msg == "nend":
-                print("End of the Night shift reached!")
+        #while(not tq.empty()):
+        #    msg = tq.get()
+        #    if msg == "dend":
+        #        print("End of the Day shift reached!")
+        #    elif msg == "nend":
+        #        print("End of the Night shift reached!")
 
-        try:
-            time_tables = load_time_table()
-        except:
-            print("failed to open " + TTPATH)
         time_table()
+        time.sleep(0.0001)
