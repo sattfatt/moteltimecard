@@ -46,10 +46,10 @@ checked_day = False
 checked_night = False
 # end of night/day value
 end_of_day_val = (22, 30)
-end_of_day_reset = (22,31)
+end_of_day_reset = (end_of_day_val[0], end_of_day_val[1] + 1)
 
 end_of_night_val = (6, 30)
-end_of_night_reset = (6, 31)
+end_of_night_reset = (end_of_night_val[0], end_of_night_val[1] + 1)
 
 time_between_reads = datetime.datetime.now()
 
@@ -57,6 +57,7 @@ max_checks_in_day = 6
 
 tq = Q.Queue(2)
 
+logq = Q.Queue()
 
 def time_checker():
     """This function calls the detect_end_of_day and detect_end_of_night
@@ -84,6 +85,11 @@ def time_checker():
             print("End of night!")
             sys.stdout.flush()
             end_of_night()
+
+        # here we can check the logq and log that to excel
+        if not logq.empty():
+            pass
+
         time.sleep(0.001)
 
 
@@ -99,6 +105,7 @@ def end_of_day():
     pickle.dump(day_time_tables, open(TTLPATH + curdt + "-D.pkl", "wb"))
     temp = {key:value for (key, value) in time_tables.items() if value[0][1] == "N"}
     time_tables = temp
+    save_time_table()
     for i in time_tables:
         print(i)
         sys.stdout.flush()
@@ -112,6 +119,7 @@ def end_of_night():
     pickle.dump(night_time_tables, open(TTLPATH + curdt + "-N.pkl", "wb"))
     temp = {key:value for (key, value) in time_tables.items() if value[0][1] == "D"}
     time_tables = temp
+    save_time_table()
     for i in time_tables:
         print(i)
         sys.stdout.flush()
@@ -150,7 +158,9 @@ def detect_end_of_night():
         checked_night = False
         #print("checked_night reset to False")
 
-    if ct.hour == end_of_night_val[0] and ct.minute == end_of_night_val[1] and ct.second == 0 and not checked_night:
+    if ct.hour == end_of_night_val[0] and \
+    ct.minute == end_of_night_val[1] and \
+    ct.second == 0 and not checked_night:
         global isEndOfNight
         isEndOfNight = True
         checked_night = True
@@ -269,7 +279,10 @@ def time_table():
         io = ["In", "Out"]
         print_time_table()
         screen.print_lcd(name , 1)
-        screen.print_lcd(str(datetime.datetime.now().strftime("%H:%M") + " " + day_night + " " + io[(len(time_tables[(ID, name)]) - 1) % 2] + " " + str(len(time_tables[(ID, name)]))), 2)
+        screen.print_lcd(str(datetime.datetime.now().strftime("%H:%M") + " " + \
+                         day_night                                     + " " + \
+                         io[(len(time_tables[(ID, name)]) - 1) % 2]    + " " + \
+                         str(len(time_tables[(ID, name)]))), 2)
 
         time.sleep(5)
         screen.lcd.lcd_clear()
@@ -283,7 +296,11 @@ def manager_command():
     """This function displays a menu on the LCD and based on the selection
     calls a management function."""
     # command = screen.input_lcd("Enter cmd (1-4):")
-    commands = ["Display-Times", "Add-Employee", "Remove-Employee", "Clear-Time Data", "Clear-Employee Data",
+    commands = ["Display-Times",      \
+                "Add-Employee",       \
+                "Remove-Employee",    \
+                "Clear-Time Data",    \
+                "Clear-Employee Data",\
                 "Change-Pin"]
     selected = screen.input_select_command_list(commands)
     if selected == commands[3]:
@@ -356,17 +373,19 @@ def remove_employee():
         if len(e) == 3:
             employees.append(e[2])
     identifier = screen.input_select_command_list(employees)
-    for line in data:
-        e = line.split(":")
-        for item in e:
-            if item == str(identifier):
-                data.remove(line)
-                screen.print_lcd("Removed!", 1)
-                time.sleep(2)
-    newdata = [i for i in data if i]
-    f = open(IDPATH, "w")
-    f.write("\n".join(newdata) + "\n")
-    f.close()
+    confirm = screen.input_lcd("Remove? . confirm")
+    if confirm == ".":
+        for line in data:
+            e = line.split(":")
+            for item in e:
+                if item == str(identifier):
+                    data.remove(line)
+                    screen.print_lcd("Removed!", 1)
+                    time.sleep(2)
+        newdata = [i for i in data if i]
+        f = open(IDPATH, "w")
+        f.write("\n".join(newdata) + "\n")
+        f.close()
 
 
 def display_times():
@@ -475,13 +494,5 @@ if __name__ == "__main__":
     screen.lcd.lcd_clear()
     screen.print_lcd("Place Key...", 1)
     while (True):
-        # handling the messages from the time checker thread.
-        #while(not tq.empty()):
-        #    msg = tq.get()
-        #    if msg == "dend":
-        #        print("End of the Day shift reached!")
-        #    elif msg == "nend":
-        #        print("End of the Night shift reached!")
-
         time_table()
         time.sleep(0.0001)
