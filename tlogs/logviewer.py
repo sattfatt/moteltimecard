@@ -9,7 +9,7 @@ def print_dict(dictionary):
     for key, val in dictionary.items():
         print(key)
         for tup in val:
-            print(tup[0].strftime("%H:%M:%S") + " " + tup[1])
+            print(str(tup[0]) + " " + tup[1])
 
 PATH = sys.argv[1]
 if(PATH):

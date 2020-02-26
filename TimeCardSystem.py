@@ -289,8 +289,6 @@ def time_table():
         screen.print_lcd("Place Key...", 1)
         return
 
-# program start
-
 # management functions
 def manager_command():
     """This function displays a menu on the LCD and based on the selection
@@ -324,9 +322,7 @@ def manager_command():
         if confirm == "":
             change_pin()
     elif selected == commands[0]:
-        confirm = screen.input_lcd("Display? . cancel")
-        if confirm == "":
-            display_times()
+        display_times()
 
 
 def clear_time_data():
@@ -480,8 +476,22 @@ def load_time_table():
     """This function loads the time table at TTPATH"""
     return pickle.load(open(TTPATH, "rb"))
 
+def remove_old_data():
+    """on start up this function checks if there is any old data from previous
+    days in the time_tables dict and resets those employee times"""
+    global time_tables
+
+    for key, val in time_tables.items():
+        if val[0][1] == "D":
+            if val[0][0].date() != datetime.datetime.now().date():
+                del time_tables[key]
+        elif val[0][1] == "N":
+            if val[0][0].day < datetime.datetime.now().day - 1:
+                del time_tables[key]
+
 
 if __name__ == "__main__":
+    remove_old_data()
     # start the time keeper thread
     time_check_thread = Thread(target=time_checker)
     time_check_thread.daemon = True
