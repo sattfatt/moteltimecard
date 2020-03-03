@@ -13,7 +13,6 @@ import queue as Q
 from threading import Thread
 """
 -------------TODO---------------
-1.) Test the time keeping on seperate branch code ( as well as logging) See if reading from the log files from the main thread causes issues
 2.) simplify any unnecessary code
 ---------------------------------
 """
@@ -41,15 +40,18 @@ time_interval = 1
 isEndOfDay = False
 # end of night shift bool
 isEndOfNight = False
+
+prev_isEndOfDay = False
+prev_isEndOfNight = False
 #---------------------------------------------------------
 checked_day = False
 checked_night = False
 # end of night/day value
-end_of_day_val = (22, 30)
-end_of_day_reset = (end_of_day_val[0], end_of_day_val[1] + 1)
+end_of_day_val = (22,30)
+#end_of_day_reset = (end_of_day_val[0], end_of_day_val[1] + 1)
 
 end_of_night_val = (6, 30)
-end_of_night_reset = (end_of_night_val[0], end_of_night_val[1] + 1)
+#end_of_night_reset = (end_of_night_val[0], end_of_night_val[1] + 1)
 
 time_between_reads = datetime.datetime.now()
 
@@ -65,31 +67,22 @@ def time_checker():
     end_of_day or end_of_night functions. Note that this function runs on its
     own thread as a daemon. It also sends a message to the main thread via
     Queue (if we want to display a message or something)"""
+    _prevtime = time.time()
+
     while(True):
-        global isEndOfDay
-        global isEndOfNight
+       # global isEndOfDay
+       # global isEndOfNight
         ct = datetime.datetime.now()
         detect_end_of_day()
         detect_end_of_night()
-        if isEndOfDay:
-            # here we should log day shift to a file
-            tq.put("dend")
-            isEndOfDay = False
-            print("End of day!")
-            sys.stdout.flush()
-            end_of_day()
-        if isEndOfNight:
-            # here we log the night shift to a file
-            tq.put("nend")
-            isEndOfNight = False
-            print("End of night!")
-            sys.stdout.flush()
-            end_of_night()
 
         # here we can check the logq and log that to excel
         if not logq.empty():
             pass
-
+        #if time.time() - _prevtime >= 1.0:
+        #    print("Checked Day: " + str(checked_day))
+        #    print("Checked Night: " + str(checked_night))
+        #    _prevtime = time.time()
         time.sleep(0.001)
 
 
@@ -133,37 +126,61 @@ def fakelog():
 
 
 def detect_end_of_day():
-    """This function detects the end of the day shift"""
+    """This function detects the end of the day shift and calls end_of_day()
+    function"""
     ct = datetime.datetime.now()
     global end_of_day_val
+    global prev_isEndOfDay
     global end_of_day_reset
-    global checked_day
-    if ct.hour >= end_of_day_reset[0] and ct.minute >= end_of_day_reset[1] and ct.second >= 0:
-        checked_day = False
-        #print("checked_day reset to False")
+    global isEndOfDay
 
-    if ct.hour == end_of_day_val[0] and ct.minute == end_of_day_val[1] and ct.second == 0 and not checked_day:
-        global isEndOfDay
+    if ct.hour == end_of_day_val[0] and \
+    ct.minute == end_of_day_val[1] and \
+    ct.second == 0:
         isEndOfDay = True
-        checked_day = True
+    else:
+        isEndOfDay = False
+
+    # detect rising and falling edge of isEndOfDay
+    if prev_isEndOfDay == isEndOfDay:
+        return
+    elif prev_isEndOfDay == False and isEndOfDay == True:
+        print("End of Day detected!")
+        end_of_day()
+        prev_isEndOfDay = isEndOfDay
+        return
+    elif prev_isEndOfDay == True and isEndOfDay == False:
+        prev_isEndOfDay = isEndOfDay
+        return
 
 
 def detect_end_of_night():
-    """This function detects the end of the night shift"""
+    """This function detects the end of the night shift and calls
+    end_of_night() function"""
     ct = datetime.datetime.now()
     global end_of_night_val
     global end_of_night_reset
-    global checked_night
-    if ct.hour >= end_of_night_reset[0] and ct.minute >= end_of_night_reset[1] and ct.second >= 0:
-        checked_night = False
-        #print("checked_night reset to False")
+    global isEndOfNight
+    global prev_isEndOfNight
 
     if ct.hour == end_of_night_val[0] and \
     ct.minute == end_of_night_val[1] and \
-    ct.second == 0 and not checked_night:
-        global isEndOfNight
+    ct.second == 0:
         isEndOfNight = True
-        checked_night = True
+    else:
+        isEndOfNight = False
+
+    # detect rising and falling edge of isEndOfNight
+    if prev_isEndOfNight == isEndOfNight:
+        return
+    elif prev_isEndOfNight == False and isEndOfNight == True:
+        print("End of Night detected!")
+        end_of_night()
+        prev_isEndOfNight = isEndOfNight
+        return
+    elif prev_isEndOfNight == True and isEndOfNight == False:
+        prev_isEndOfNight = isEndOfNight
+        return
 
 
 def check_pin(ID, name):
@@ -213,8 +230,8 @@ def time_table():
 
     if time_difference.total_seconds() > time_interval:
         time_between_reads = datetime.datetime.now()
-        ID, name = reader.read_fob()
-        #ID, name = reader.read_no_block()
+        #ID, name = reader.read_fob()
+        ID, name = reader.read_no_block()
         if(not ID or not name):
             return
 
@@ -484,10 +501,10 @@ def remove_old_data():
     for key, val in time_tables.items():
         if val[0][1] == "D":
             if val[0][0].date() != datetime.datetime.now().date():
-                del time_tables[key]
+                time_tables[key] = []
         elif val[0][1] == "N":
             if val[0][0].day < datetime.datetime.now().day - 1:
-                del time_tables[key]
+                time_tables[key] = []
 
 
 if __name__ == "__main__":
@@ -505,4 +522,4 @@ if __name__ == "__main__":
     screen.print_lcd("Place Key...", 1)
     while (True):
         time_table()
-        time.sleep(0.0001)
+        time.sleep(0.001)
