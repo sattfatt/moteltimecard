@@ -508,7 +508,7 @@ def remove_old_data():
 
 
 if __name__ == "__main__":
-    remove_old_data()
+    #remove_old_data()
     # start the time keeper thread
     time_check_thread = Thread(target=time_checker)
     time_check_thread.daemon = True
