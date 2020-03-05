@@ -25,6 +25,7 @@ TTPATH  = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/time_tables.pk
 TTLPATH = "/home/pi/Documents/Motel6/Timecardsystem/moteltimecard/tlogs/"
 
 NIGHTSHIFTCUTOFF = (21, 30)
+NIGHTSHIFTCUTOFFDT = datetime.time(21,30,0)
 
 # initialize reader object
 reader = RFID.RFID()
@@ -34,7 +35,7 @@ reader = RFID.RFID()
 time_tables = {}
 
 # time interval for reading
-time_interval = 1
+time_interval = 0.1
 #---------------only write in time_checker----------------
 # end of day bool
 isEndOfDay = False
@@ -57,9 +58,9 @@ time_between_reads = datetime.datetime.now()
 
 max_checks_in_day = 6
 
-tq = Q.Queue(2)
+#tq = Q.Queue(2)
 
-logq = Q.Queue()
+#logq = Q.Queue()
 
 def time_checker():
     """This function calls the detect_end_of_day and detect_end_of_night
@@ -70,19 +71,9 @@ def time_checker():
     _prevtime = time.time()
 
     while(True):
-       # global isEndOfDay
-       # global isEndOfNight
         ct = datetime.datetime.now()
         detect_end_of_day()
         detect_end_of_night()
-
-        # here we can check the logq and log that to excel
-        if not logq.empty():
-            pass
-        #if time.time() - _prevtime >= 1.0:
-        #    print("Checked Day: " + str(checked_day))
-        #    print("Checked Night: " + str(checked_night))
-        #    _prevtime = time.time()
         time.sleep(0.001)
 
 
@@ -242,9 +233,6 @@ def time_table():
             screen.print_lcd("Place Key...", 1)
             return
         name = ''.join(name.split())
-        # here we look at the pin log file and check to see if their input pin
-        # matches the fob ID. This is to ensure no accidental entries. if the
-        # pin is incorrect we should abort logging and saving.
         check = check_pin(ID, name)
         if check == 0:
             screen.print_lcd("Incorrect Pin!", 1)
@@ -262,9 +250,9 @@ def time_table():
 
         time_between_reads = datetime.datetime.now()
 
+        # compare datetimes instead...
         day_night = "D"
-        if datetime.datetime.now().hour >= NIGHTSHIFTCUTOFF[0] and datetime.datetime.now().minute >= \
-                NIGHTSHIFTCUTOFF[1]:
+        if datetime.datetime.now().time() >= NIGHTSHIFTCUTOFFDT:
             day_night = "N"
         # this means if someone checks in/out we are in the night shift
         else:
@@ -323,9 +311,7 @@ def manager_command():
         if confirm == "":
             clear_time_data()
     elif selected == commands[4]:
-        confirm = screen.input_lcd("Clear? . cancel")
-        if confirm == "":
-            clear_employee_table()
+        clear_employee_table()
     elif selected == commands[1]:
         confirm = screen.input_lcd("add? . cancel")
         if confirm == "":
@@ -344,24 +330,29 @@ def manager_command():
 
 def clear_time_data():
     """This function clears the time table dictionary for a fresh start"""
-    global time_tables
-    time_tables = {}
-    save_time_table()
-    print("data cleared!")
-    sys.stdout.flush()
-    screen.print_lcd("Cleared!", 1)
-    time.sleep(2)
+    confirm = screen.input_lcd("clear? . = yes")
+    if confirm == ".":
+        global time_tables
+        time_tables = {}
+        save_time_table()
+        print("data cleared!")
+        sys.stdout.flush()
+        screen.print_lcd("Cleared!", 1)
+        time.sleep(2)
 
 
 def clear_employee_table():
     """This function clears the ID.txt file which contains all the emplyees
     with their pins"""
-    f = open(IDPATH, "w")
-    f.write("")
-    f.close()
-    screen.print_lcd("Cleared", 1)
-    screen.print_lcd("Employees", 2)
-    time.sleep(2)
+
+    confirm = screen.input_lcd("Confirm? . = yes")
+    if confirm == ".":
+        f = open(IDPATH, "w")
+        f.write("")
+        f.close()
+        screen.print_lcd("Cleared", 1)
+        screen.print_lcd("Employees", 2)
+        time.sleep(2)
 
 
 def add_employee():
@@ -521,5 +512,6 @@ if __name__ == "__main__":
     screen.lcd.lcd_clear()
     screen.print_lcd("Place Key...", 1)
     while (True):
+        #print(NIGHTSHIFTCUTOFFDT)
         time_table()
         time.sleep(0.001)
